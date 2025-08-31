@@ -8,13 +8,19 @@
   <script src="https://unpkg.com/lucide@latest"></script>
   <style>
     .modal-open{overflow:hidden}
+
+    /* 이벤트 필 (모바일 가독성 ↑) */
     .event-pill{
-      font-size:10px; line-height:1;
-      padding:2px 4px; border-radius:4px;
+      font-size:11px; line-height:1.05;
+      padding:3px 6px; border-radius:6px;
       white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
       display:block;
     }
+    @media (min-width: 640px){
+      .event-pill{ font-size:10px; padding:2px 4px; border-radius:4px; }
+    }
     .cell-clickable{cursor:pointer}
+    #dayEventsBody{ max-height: 60vh; overflow-y: auto; }
   </style>
 </head>
 <body class="min-h-screen bg-gray-50 p-2 sm:p-4">
@@ -449,29 +455,49 @@
     });
 
     function openDayEventsModal(date, events) {
+      if (!events || events.length === 0) return;
       dayEventsTitle.textContent = `${date.getFullYear()}년 ${date.getMonth()+1}월 ${date.getDate()}일 일정`;
       dayEventsBody.innerHTML = '';
+
       const colorMap = {
         applyStart: 'bg-yellow-200 text-yellow-900 border border-yellow-400',
         applyEnd:   'bg-red-200 text-red-900 border border-red-400',
         exam:       'bg-blue-200 text-blue-900 border border-blue-400'
       };
+      const labelText = {
+        applyStart: '접수시작',
+        applyEnd:   '접수마감',
+        exam:       '시험'
+      };
+
       events.forEach(ev=>{
         const row = document.createElement('div');
         row.className = 'flex items-center gap-2';
+
+        // 색 점
         const dot = document.createElement('span');
         dot.className = `w-3 h-3 rounded ${colorMap[ev.kind]}`;
+
+        // 유형 라벨
+        const badge = document.createElement('span');
+        badge.className = `inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium ${colorMap[ev.kind]}`;
+        badge.textContent = labelText[ev.kind];
+
+        // 자격증명
         const text = document.createElement('span');
-        text.textContent = ev.title; // 자격증명만
+        text.textContent = ev.title;
         text.className = 'text-gray-800';
+
         row.appendChild(dot);
+        row.appendChild(badge);
         row.appendChild(text);
         dayEventsBody.appendChild(row);
       });
+
       dayEventsModal.classList.remove('hidden');
     }
 
-    /* ---------- 캘린더 렌더 (3개만 표시 + ''' 표시 + 날짜 클릭 시 전체 보기) ---------- */
+    /* ---------- 캘린더 렌더 (모바일 가독성 강화 + 날짜 탭 시 항상 상세보기) ---------- */
     function renderCalendarHeader() {
       const title = document.getElementById('calendarTitle');
       title.textContent = `${currentCalendarDate.getFullYear()}년 ${currentCalendarDate.getMonth() + 1}월`;
@@ -491,21 +517,21 @@
       // 앞쪽 공백
       for (let i = 0; i < startDow; i++) {
         const div = document.createElement('div');
-        div.className = 'h-24';
+        div.className = 'h-28 sm:h-24';
         grid.appendChild(div);
       }
 
-      const MAX_SHOW = 3; // 요청사항: 3개만 보이기
+      const MAX_SHOW = 3;
 
       for (let day = 1; day <= days; day++) {
         const cellDate = new Date(y, m, day);
         const events = getEventsForDate(cellDate);
 
         const cell = document.createElement('div');
-        cell.className = 'h-24 border rounded p-1 bg-white flex flex-col';
+        cell.className = 'h-28 sm:h-24 border rounded p-1 bg-white flex flex-col';
 
         const dayLabel = document.createElement('div');
-        dayLabel.className = 'text-[10px] sm:text-xs text-gray-600';
+        dayLabel.className = 'text-xs sm:text-[10px] text-gray-600';
         dayLabel.textContent = day;
 
         const listWrap = document.createElement('div');
@@ -526,20 +552,16 @@
 
         const hiddenCount = events.length - show.length;
         if (hiddenCount > 0) {
-          // ''' 표시
           const more = document.createElement('div');
           more.className = 'event-pill bg-gray-100 text-gray-700 border border-gray-300 w-fit';
           more.textContent = "'''";
           listWrap.appendChild(more);
+          more.addEventListener('click', (e)=>{ e.stopPropagation(); openDayEventsModal(cellDate, events); });
+        }
 
-          // 날짜 셀 클릭, ''' 클릭 모두 모달 오픈
+        if (events.length > 0) {
           cell.classList.add('cell-clickable');
-          const openAll = (e) => {
-            e.stopPropagation();
-            openDayEventsModal(cellDate, events);
-          };
-          more.addEventListener('click', openAll);
-          cell.addEventListener('click', openAll);
+          cell.addEventListener('click', ()=> openDayEventsModal(cellDate, events));
         }
 
         cell.appendChild(dayLabel);
